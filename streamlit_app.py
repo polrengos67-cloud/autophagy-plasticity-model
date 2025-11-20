@@ -149,43 +149,122 @@ def fig_to_bytes(fig):
     buf.seek(0)
     return buf
 
-# generate a PDF with title page + figures
+import streamlit as st
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+from io import BytesIO
+import textwrap
+
+# --- Optimized PDF Generation Function ---
 def create_pdf_bytes(t, S, D, A, E, params):
     buf = BytesIO()
+    # Use a context manager to ensure the file is saved/closed properly
     with PdfPages(buf) as pdf:
-        # title page
-        fig = plt.figure(figsize=(8.5, 11))
-        fig.text(0.1, 0.9, "The Metabolic Switch: Autophagic Flux Gates Synaptic Stability", fontsize=14, weight='bold')
-        fig.text(0.1, 0.86, f"Author: <your name>", fontsize=11)
-        fig.text(0.1, 0.82, "Abstract:", fontsize=11, weight='bold')
-        abstract = ("Brief model linking stress → autophagy → plasticity. Simulations show how chronic stress reduces A, increases D, and undermines LTP maintenance.")
-        fig.text(0.1, 0.77, abstract, fontsize=10, wrap=True)
-        pdf.savefig(fig); plt.close(fig)
+        
+        # --- Page 1: Title & Abstract ---
+        fig_text = plt.figure(figsize=(8.5, 11))
+        plt.axis('off') # Hide axes for the text page
+        
+        # Title Section
+        fig_text.text(0.1, 0.9, "The Metabolic Switch:\nAutophagic Flux Gates Synaptic Stability", 
+                      fontsize=16, weight='bold', color='darkblue')
+        fig_text.text(0.1, 0.85, "Author: Polykleitos Rengos", fontsize=12, style='italic')
+        
+        # Abstract Section
+        fig_text.text(0.1, 0.80, "Abstract:", fontsize=12, weight='bold')
+        
+        raw_abstract = ("This computational model links metabolic stress, autophagic flux, and "
+                        "neural plasticity. Simulations demonstrate that while acute stress "
+                        "may be tolerated, chronic suppression of autophagy leads to "
+                        "damage accumulation (D) and the failure of LTP maintenance (S).")
+        
+        # Wrap text so it fits on the page
+        wrapped_abstract = textwrap.fill(raw_abstract, width=80)
+        fig_text.text(0.1, 0.75, wrapped_abstract, fontsize=11, ha='left', va='top')
+        
+        # Optional: Print Simulation Parameters on Page 1
+        fig_text.text(0.1, 0.60, "Simulation Parameters:", fontsize=12, weight='bold')
+        param_str = "\n".join([f"{k}: {v}" for k, v in params.items()])
+        fig_text.text(0.1, 0.58, param_str, fontsize=10, fontfamily='monospace', va='top')
+        
+        pdf.savefig(fig_text)
+        plt.close(fig_text)
 
-        # figures page
-        fig, axs = plt.subplots(4, 1, figsize=(8.5, 11), sharex=True)
-        axs[0].plot(t, S); axs[0].set_title('Synaptic strength (S)')
-        axs[1].plot(t, D); axs[1].set_title('Damage (D)')
-        axs[2].plot(t, A); axs[2].set_title('Autophagy (A)')
-        axs[3].plot(t, E); axs[3].set_title('Energy (E)')
+        # --- Page 2: Data Visualization ---
+        fig_plots, axs = plt.subplots(4, 1, figsize=(8.5, 11), sharex=True)
+        
+        # Synaptic Strength
+        axs[0].plot(t, S, color='blue', linewidth=2)
+        axs[0].set_ylabel('Strength (S)')
+        axs[0].set_title('Synaptic Strength Dynamics', weight='bold')
+        axs[0].grid(True, alpha=0.3)
+        
+        # Damage
+        axs[1].plot(t, D, color='red', linewidth=2)
+        axs[1].set_ylabel('Damage (D)')
+        axs[1].set_title('Cellular Damage Accumulation', weight='bold')
+        axs[1].grid(True, alpha=0.3)
+        
+        # Autophagy
+        axs[2].plot(t, A, color='green', linewidth=2)
+        axs[2].set_ylabel('Flux (A)')
+        axs[2].set_title('Autophagic Flux', weight='bold')
+        axs[2].grid(True, alpha=0.3)
+        
+        # Energy
+        axs[3].plot(t, E, color='orange', linewidth=2)
+        axs[3].set_ylabel('Energy (E)')
+        axs[3].set_title('Metabolic Energy Availability', weight='bold')
+        axs[3].set_xlabel('Time (t)')
+        axs[3].grid(True, alpha=0.3)
+        
         plt.tight_layout()
-        pdf.savefig(fig); plt.close(fig)
+        pdf.savefig(fig_plots)
+        plt.close(fig_plots)
+        
     buf.seek(0)
     return buf
 
-pdf_bytes = create_pdf_bytes(t, S, D, A, E, params)
-b64 = base64.b64encode(pdf_bytes.read()).decode('utf-8')
-pdf_link = f"data:application/pdf;base64,{b64}"
-st.markdown("### Download results")
-st.markdown(f"[Download PDF report](%s)" % pdf_link)
+# --- Main App Logic ---
 
-# small analysis
-st.subheader("Quick analysis")
-st.write("Final values at simulation end:")
-st.write({
-    "S_final": float(S[-1]),
-    "D_final": float(D[-1]),
-    "A_final": float(A[-1]),
-    "E_final": float(E[-1])
-})
-st.write("Interpretation: higher effective autophagy (A_eff) and lower equilibrium damage favor durable maintenance of the induced LTP (S).")
+# Generate PDF (assuming t, S, D, A, E, params exist from your simulation)
+pdf_buffer = create_pdf_bytes(t, S, D, A, E, params)
+
+st.markdown("### 📄 Results & Report")
+
+# 1. Native Streamlit Download Button (Much faster/cleaner than base64 link)
+st.download_button(
+    label="📥 Download Full PDF Report",
+    data=pdf_buffer,
+    file_name="autophagy_plasticity_report.pdf",
+    mime="application/pdf",
+    use_container_width=True
+)
+
+# 2. Optimized "Quick Analysis" Dashboard
+st.divider()
+st.subheader("📊 Quick Analysis")
+
+# Use columns for metrics instead of a raw dictionary
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("Final Strength (S)", f"{S[-1]:.3f}", delta_color="normal")
+with col2:
+    st.metric("Final Damage (D)", f"{D[-1]:.3f}", delta_color="inverse") # Red if high
+with col3:
+    st.metric("Final Autophagy (A)", f"{A[-1]:.3f}")
+with col4:
+    st.metric("Final Energy (E)", f"{E[-1]:.3f}")
+
+# Logical interpretation text
+if S[-1] > 1.2:
+    status = "✅ **LTP Maintained:** Autophagy successfully cleared damage, allowing consolidation."
+    status_color = "success"
+else:
+    status = "⚠️ **LTP Failed:** Accumulated damage or energy deficit prevented consolidation."
+    status_color = "error"
+
+if status_color == "success":
+    st.success(status)
+else:
+    st.error(status)
