@@ -6,7 +6,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 from io import BytesIO
 import textwrap
 
-# --- Optimized Model Definition ---
+# --- 1. Optimized Model Definition (From your latest snippet) ---
 def model(t, y, k_decay, k_damage, beta, alpha, A0, sigma, k_maintain, k_atp, k_energy, P_val):
     S, D, A, E = y
     
@@ -15,13 +15,12 @@ def model(t, y, k_decay, k_damage, beta, alpha, A0, sigma, k_maintain, k_atp, k_
     dAdt = 0.2 * (target_A - A)
     
     # Energy: homeostatic regulation with bounds
-    # Production scales with mitochondrial health (1-D)
-    # Consumption driven by synaptic activity
+    # Production scales with mitochondrial health (1-0.5*D)
     production = k_atp * (1 - 0.5 * D)
     consumption = k_energy * S
     dEdt = production - consumption
     
-    # Prevent energy from going negative or exploding
+    # Prevent energy from going negative or exploding (Robust Bounds)
     if E < 0.1:
         dEdt = max(0, dEdt)  # Stop decline below threshold
     elif E > 5.0:
@@ -39,13 +38,14 @@ def model(t, y, k_decay, k_damage, beta, alpha, A0, sigma, k_maintain, k_atp, k_
     
     return [dSdt, dDdt, dAdt, dEdt]
 
-# --- Professional Graph Generator ---
+# --- 2. Professional Graph Generator (The "Supergraph") ---
 def create_figure(t, S, D, A, E, title, p_time):
     fig, axs = plt.subplots(4, 1, figsize=(10, 11), sharex=True)
     plt.subplots_adjust(hspace=0.12, top=0.94, bottom=0.06)
 
     def style_subplot(ax, data, color, label, ylabel, ylim=None):
         ax.plot(t, data, color=color, linewidth=2.2, label=label)
+        # Mark the stimulus time
         ax.axvline(p_time, color='red', linestyle='--', alpha=0.4, linewidth=1.5, label='Stimulus')
         ax.set_ylabel(ylabel, fontsize=11, weight='bold')
         ax.grid(True, alpha=0.3, linestyle=':')
@@ -56,17 +56,17 @@ def create_figure(t, S, D, A, E, title, p_time):
         ax.legend(loc='upper right', frameon=False, fontsize=9)
 
     # Biologically realistic axis limits
-    style_subplot(axs[0], S, '#1f77b4', 'Synaptic Strength (S)', 'Strength (a.u.)', ylim=(0, 2.2))
+    style_subplot(axs[0], S, '#1f77b4', 'Synaptic Strength (S)', 'Strength (a.u.)', ylim=(0, 2.5))
     style_subplot(axs[1], D, '#d62728', 'Cellular Damage (D)', 'Damage (a.u.)', ylim=(0, 0.6))
     style_subplot(axs[2], A, '#2ca02c', 'Autophagic Flux (A)', 'Flux (a.u.)', ylim=(0, 1.2))
-    style_subplot(axs[3], E, '#ff7f0e', 'Metabolic Energy (E)', 'Energy (a.u.)', ylim=(0, 4.0))
+    style_subplot(axs[3], E, '#ff7f0e', 'Metabolic Energy (E)', 'Energy (a.u.)', ylim=(0, 4.5))
 
     axs[0].set_title(title, weight='bold', fontsize=13, pad=12)
     axs[3].set_xlabel('Time (arbitrary units)', fontsize=11, weight='bold')
     
     return fig
 
-# --- PDF Report Generator ---
+# --- 3. PDF Report Generator (With Corrected Abstract) ---
 def create_pdf(fig, params):
     buf = BytesIO()
     with PdfPages(buf) as pdf:
@@ -81,6 +81,7 @@ def create_pdf(fig, params):
         
         fig_text.text(0.1, 0.78, "Abstract & Hypothesis:", fontsize=12, weight='bold')
         
+        # *** CRITICAL FIX: Includes the Lateral Habenula vs PFC distinction ***
         abstract = (
             "This computational model explores the interplay between metabolic stress, "
             "autophagic flux, and synaptic plasticity. While stress-induced suppression "
@@ -107,7 +108,7 @@ def create_pdf(fig, params):
     buf.seek(0)
     return buf
 
-# --- Streamlit Interface ---
+# --- 4. Streamlit Interface ---
 st.set_page_config(page_title="Autophagy-Plasticity Model", layout="wide")
 st.title("Stress → Autophagy → Neural Plasticity")
 st.caption("Interactive computational model demonstrating metabolic gating of synaptic stability")
@@ -130,7 +131,7 @@ with st.sidebar:
 
     st.subheader("Experimental Protocol")
     sigma = st.slider("σ (stress level)", 0.0, 8.0, 0.0, 0.5, 
-                     help="0 = healthy control, 4+ = chronic stress")
+                      help="0 = healthy control, 4+ = chronic stress")
     p_strength = st.slider("Stimulus strength", 0.1, 1.5, 0.6, 0.05)
     p_time = st.slider("Stimulus onset time", 20, 60, 30, 5)
     p_duration = st.slider("Stimulus duration", 5, 30, 15, 5)
@@ -138,8 +139,9 @@ with st.sidebar:
     st.markdown("---")
     st.caption("💡 **Tip:** For Figure 1 (control): σ=0. For Figure 2 (stress): σ=4.")
 
-# --- Run Simulation ---
-y0 = [1.0, 0.02, 1.0/(1+sigma), 2.0]  # S, D, A, E initial conditions
+# --- 5. Run Simulation (Robust LSODA Method) ---
+# Initial Conditions: S=1, D=0.02, A=Adapted, E=2.0 (Healthy Baseline)
+y0 = [1.0, 0.02, 1.0/(1+sigma), 2.0]  
 t_stim_end = p_time + p_duration
 t_final = 150
 
@@ -166,11 +168,12 @@ D_all = np.concatenate([sol1.y[1], sol2.y[1], sol3.y[1]])
 A_all = np.concatenate([sol1.y[2], sol2.y[2], sol3.y[2]])
 E_all = np.concatenate([sol1.y[3], sol2.y[3], sol3.y[3]])
 
-# --- Display Results ---
+# --- 6. Display Results ---
 col1, col2 = st.columns([3, 1])
 
 with col1:
     condition = "Optimized Condition: Healthy Control" if sigma < 1.0 else "Suboptimal Condition: Chronic Stress"
+    # Create the professional figure
     fig = create_figure(t_all, S_all, D_all, A_all, E_all, condition, p_time)
     st.pyplot(fig)
 
@@ -181,6 +184,7 @@ with col2:
     st.metric("Peak S", f"{np.max(S_all):.3f}")
     st.metric("Final S", f"{S_all[-1]:.3f}")
     
+    # Logic check for LTP
     ltp_success = S_all[-1] > 1.3
     st.metric("LTP Maintained", "Yes ✅" if ltp_success else "No ❌")
     
@@ -190,6 +194,23 @@ with col2:
     
     st.markdown("---")
     
-    # Interpretation
+    # Generate PDF for Download
+    param_dict = {
+        "k_decay": k_decay, "k_damage": k_damage, "sigma": sigma,
+        "beta": beta, "alpha": alpha, "Stimulus": p_strength
+    }
+    
+    pdf_data = create_pdf(fig, param_dict)
+    
+    st.download_button(
+        label="📄 Download PDF Report",
+        data=pdf_data,
+        file_name="autophagy_plasticity_results.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    
     if sigma < 1.0 and ltp_success:
-        st.success("**Optimal:** Efficient autophagy ma
+        st.success("**Optimal:** Efficient autophagy maintains proteostasis, allowing energy to fuel LTP stability.")
+    elif sigma >= 1.0:
+        st.error("**Failed:** Stress suppressed autophagy, leading to damage accumulation and metabolic uncoupling.")
