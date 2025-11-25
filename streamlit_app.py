@@ -60,7 +60,6 @@ def run_simulation(params):
     
     # Pre-stimulus phase
     t_pre = np.linspace(0, t_stim, 300)
-    P_vals_pre = np.zeros_like(t_pre)
     
     sol_pre = solve_ivp(
         lambda t, y: model(t, y, **{k: v for k, v in params.items() 
@@ -74,7 +73,6 @@ def run_simulation(params):
     
     # Post-stimulus phase
     t_post = np.linspace(t_stim, t_end, 1000)
-    P_vals_post = np.zeros_like(t_post)
     
     sol_post = solve_ivp(
         lambda t, y: model(t, y, **{k: v for k, v in params.items() 
@@ -179,31 +177,4 @@ with tab1:
         st.subheader("🔗 Synaptic Parameters")
         k_decay = st.number_input("k_decay", 0.001, 0.01, 0.003, 0.001,
                                  help="Natural synaptic decay rate")
-        k_damage = st.number_input("k_damage", 0.0, 1.0, 0.3, 0.05,
-                                  help="Damage-induced decay coefficient")
-        k_maintain = st.number_input("k_maintain", 0.0, 0.02, 0.006, 0.001,
-                                    help="Energy-dependent maintenance rate")
-        
-        st.markdown("---")
-        st.subheader("🗑️ Damage & Clearance")
-        beta = st.number_input("β", 0.001, 0.1, 0.02, 0.005,
-                             help="Damage production rate")
-        alpha = st.number_input("α", 0.0, 1.0, 0.3, 0.05,
-                              help="Autophagic clearance efficiency")
-        
-        st.markdown("---")
-        st.subheader("⚡ Energy Metabolism")
-        k_atp = st.number_input("k_atp", 0.1, 1.0, 0.3, 0.05,
-                              help="ATP production rate")
-        k_energy = st.number_input("k_energy", 0.0, 0.5, 0.1, 0.01,
-                                 help="Energy consumption by synapses")
-        
-        st.markdown("---")
-        st.subheader("💉 LTP Protocol")
-        stim_strength = st.number_input("Stimulus", 0.0, 2.0, 0.8, 0.1,
-                                       help="LTP stimulus strength")
-        stim_time = st.number_input("Stim Time", 10, 100, 30, 5,
-                                   help="Time of stimulus application")
-        
-        st.markdown("---")
-        if st.button("🔄 Reset to
+        k_damage = st.number_input("k_damage", 0.0, 1
